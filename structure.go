@@ -24,7 +24,7 @@ func LoadFunctionsFromSource(reader io.Reader) ([]Function, error) {
 
 	parser, err := syntax.NewParser(syntax.KeepComments(true)).Parse(reader, "")
 	if err != nil {
-		return functions, fmt.Errorf("loading functions from source: %w", err)
+		return functions, fmt.Errorf("error loading functions from source: %w", err)
 	}
 
 	syntax.Walk(parser, func(node syntax.Node) bool {
@@ -41,4 +41,29 @@ func LoadFunctionsFromSource(reader io.Reader) ([]Function, error) {
 	SortedFunctions(functions)
 
 	return functions, nil
+}
+
+type Comment struct {
+	syntax.Comment
+}
+
+func LoadCommentsFromSource(reader io.Reader) (map[uint]Comment, error) {
+	var commentsByLine map[uint]Comment = make(map[uint]Comment)
+
+	parser, err := syntax.NewParser(syntax.KeepComments(true)).Parse(reader, "")
+	if err != nil {
+		return commentsByLine, fmt.Errorf("error loading comment from source: %w", err)
+	}
+
+	syntax.Walk(parser, func(node syntax.Node) bool {
+		if node != nil {
+			if x, ok := node.(*syntax.Comment); ok {
+				commentsByLine[x.Hash.Line()] = Comment{*x}
+			}
+		}
+
+		return true
+	})
+
+	return commentsByLine, nil
 }
