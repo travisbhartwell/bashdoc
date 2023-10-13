@@ -3,8 +3,9 @@ package bashdoc
 import (
 	"fmt"
 	"io"
-	"mvdan.cc/sh/v3/syntax"
 	"sort"
+
+	"mvdan.cc/sh/v3/syntax"
 )
 
 type Function struct {
@@ -28,12 +29,12 @@ func LoadFunctionsFromSource(reader io.Reader) ([]Function, error) {
 
 	syntax.Walk(parser, func(node syntax.Node) bool {
 		if node != nil {
-			switch x := node.(type) {
-			case *syntax.FuncDecl:
+			if x, ok := node.(*syntax.FuncDecl); ok {
 				f := Function{Name: x.Name.Value, DeclaredAt: x.Position}
 				functions = append(functions, f)
 			}
 		}
+
 		return true
 	})
 

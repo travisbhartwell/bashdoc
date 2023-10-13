@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/travisbhartwell/bashdoc"
 	"os"
+
+	"github.com/travisbhartwell/bashdoc"
 )
 
 func main() {
@@ -20,6 +21,11 @@ func main() {
 	}
 
 	for _, f := range functions {
-		fmt.Printf("Found function %s at %d, %d\n", f.Name, f.DeclaredAt.Line(), f.DeclaredAt.Col())
+		fmt.Printf(
+			"Found function %s at %d, %d\n",
+			f.Name,
+			f.DeclaredAt.Line(),
+			f.DeclaredAt.Col(),
+		)
 	}
 }
