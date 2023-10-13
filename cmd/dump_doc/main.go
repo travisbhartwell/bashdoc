@@ -16,6 +16,27 @@ func main() {
 	}
 }
 
+func associated_comments(
+	function bashdoc.Function,
+	comments bashdoc.CommentsByLine,
+) []bashdoc.Comment {
+	var associated []bashdoc.Comment
+
+	line := function.DeclaredAt.Line() - 1
+
+	for line > 0 {
+		if comment, found := comments.Comments[line]; found {
+			associated = append(associated, comment)
+		} else {
+			break
+		}
+
+		line--
+	}
+
+	return associated
+}
+
 func run() error {
 	reader, err := os.Open("test-script")
 	if err != nil {
@@ -28,6 +49,7 @@ func run() error {
 		return fmt.Errorf("error loading functions from file: %w", err)
 	}
 
+	fmt.Println("Functions found:")
 	for _, f := range functions {
 		fmt.Printf(
 			"Found function %s at %d, %d\n",
@@ -47,7 +69,9 @@ func run() error {
 		return fmt.Errorf("error loading comments from file: %s", err)
 	}
 
-	for line, comment := range comments {
+	fmt.Println("Comments found:")
+	for _, line := range comments.LinesWithComments() {
+		comment := comments.Comments[line]
 		fmt.Printf(
 			"On line %d, found comment at %d, %d: %s\n",
 			line,
@@ -55,6 +79,22 @@ func run() error {
 			comment.Pos().Col(),
 			comment.Text,
 		)
+	}
+
+	for _, f := range functions {
+		associated := associated_comments(f, *comments)
+		fmt.Printf(
+			"Associated comments for function %s:\n",
+			f.Name,
+		)
+		for _, comment := range associated {
+			fmt.Printf(
+				"Comment at %d, %d: %s\n",
+				comment.Pos().Line(),
+				comment.Pos().Col(),
+				comment.Text,
+			)
+		}
 	}
 
 	return nil

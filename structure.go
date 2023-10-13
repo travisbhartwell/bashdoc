@@ -3,6 +3,7 @@ package bashdoc
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 
 	"mvdan.cc/sh/v3/syntax"
@@ -47,12 +48,25 @@ type Comment struct {
 	syntax.Comment
 }
 
-func LoadCommentsFromSource(reader io.Reader) (map[uint]Comment, error) {
+type CommentsByLine struct {
+	Comments map[uint]Comment
+}
+
+func (c *CommentsByLine) LinesWithComments() []uint {
+	var lines []uint
+	for line := range c.Comments {
+		lines = append(lines, line)
+	}
+	slices.Sort(lines)
+	return lines
+}
+
+func LoadCommentsFromSource(reader io.Reader) (*CommentsByLine, error) {
 	var commentsByLine map[uint]Comment = make(map[uint]Comment)
 
 	parser, err := syntax.NewParser(syntax.KeepComments(true)).Parse(reader, "")
 	if err != nil {
-		return commentsByLine, fmt.Errorf("error loading comment from source: %w", err)
+		return nil, fmt.Errorf("error loading comment from source: %w", err)
 	}
 
 	syntax.Walk(parser, func(node syntax.Node) bool {
@@ -65,5 +79,5 @@ func LoadCommentsFromSource(reader io.Reader) (map[uint]Comment, error) {
 		return true
 	})
 
-	return commentsByLine, nil
+	return &CommentsByLine{Comments: commentsByLine}, nil
 }
