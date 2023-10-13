@@ -26,7 +26,7 @@ func associated_comments(
 
 	for line > 0 {
 		if comment, found := comments.Comments[line]; found {
-			associated = append(associated, comment)
+			associated = append([]bashdoc.Comment{comment}, associated...)
 		} else {
 			break
 		}
