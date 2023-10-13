@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# This is a top-level comment
+
+# This is a comment outside of a function
+# Here's the second line
+function myfunction() {
+    # This is a comment inside of a function
+    echo "Hello, World"
+}
+
+function anotherone() {
+    echo "Goodbye"
+
+    function nested() {
+        echo "World"
+    }
+}
+
+# PRIVATE: hidden_func
+function hidden_func() {
+    echo "This is private"
+}
