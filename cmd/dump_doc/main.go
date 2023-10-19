@@ -61,7 +61,7 @@ func run() error {
 
 	_, err = reader.Seek(0, io.SeekStart)
 	if err != nil {
-		return fmt.Errorf("error rewinding rearder: %w", err)
+		return fmt.Errorf("error rewinding reader: %w", err)
 	}
 
 	comments, err := bashdoc.LoadCommentsFromSource(reader)

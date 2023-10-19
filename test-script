@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
 
-# This is a top-level comment
+## Any comments that start with two hashes are bashdoc comments.
+## Comment blocks separated by blank lines from any code are
+## general narrative comments at the file level.
 
-# This is a comment outside of a function
-# Here's the second line
+# This is a top-level comment, that bashdoc doesn't pick up.
+
+## Set `TEST_SCRIPT_HOME` to set where `test-script` should look for its data files.
+## If not set, defaults to `$HOME`.
+: "${TEST_SCRIPT_HOME:=${HOME}}"
+
+## `myfunction` greets the user
 function myfunction() {
     # This is a comment inside of a function
     echo "Hello, World"
 }
 
+# There are no bashdoc comments, so this function will show up in the docs without any extra text.
 function anotherone() {
     echo "Goodbye"
-
-    function nested() {
-        echo "World"
-    }
 }
 
-# PRIVATE: hidden_func
+# PRIVATE tells bashdoc to not add this function to the documentation
+## PRIVATE: hidden_func
 function hidden_func() {
     echo "This is private"
 }
