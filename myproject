@@ -1,0 +1,105 @@
+#!/usr/bin/env -S mycmd project run
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+#----------------------------------------
+# Shell Script Support
+project.load_task_library "shell"
+
+project.register_fileset SHELL_FILES
+# shellcheck disable=SC2154
+project.add_files_to_fileset SHELL_FILES "${MYPROJECT_PROJECT_FILE}"
+
+project.register_task_with_fileset list-shell-files project.list-files SHELL_FILES
+project.register_task_with_fileset format-shell shell.format SHELL_FILES
+project.register_task_with_fileset lint-shell shell.lint SHELL_FILES
+
+#----------------------------------------
+# Go Support
+mycmd.defer_at_startup mycmd.init_bin go
+
+function go-lines() {
+    mycmd.bin_execute go run github.com/segmentio/golines@latest --write-output --max-len=100 --tab-len=8 --reformat-tags --shorten-comments .
+}
+project.register_task go-lines
+
+function go-imports() {
+    mycmd.bin_execute go run golang.org/x/tools/cmd/goimports@latest -w .
+}
+project.register_task go-imports
+
+function go-fmt() {
+    mycmd.bin_execute go fmt -x ./...
+}
+project.register_task go-fmt
+
+function format() {
+    project.execute_tasks format-shell go-imports go-lines
+}
+project.register_task format
+
+function go-mod-tidy() {
+    mycmd.bin_execute go mod tidy
+}
+project.register_task go-mod-tidy
+
+mycmd.defer_at_startup mycmd.init_bin golangci-lint
+function lint-golangci-lint-auto-fix() {
+    local -r linter_name="${1}"
+
+    golangci-lint run \
+        --verbose \
+        --disable-all --enable "${linter_name}" \
+        --fix
+}
+project.register_task lint-golangci-lint-auto-fix
+
+mycmd.defer_at_startup mycmd.init_bin golangci-lint
+function lint-golangci-lint() {
+    golangci-lint run --sort-results
+}
+project.register_task lint-golangci-lint
+
+function go-vet() {
+    mycmd.bin_execute go vet
+}
+project.register_task go-vet
+
+function lint-all() {
+    project.execute_tasks lint-shell go-vet lint-golangci-lint
+}
+project.register_task lint-all
+
+function run-dump_doc() {
+    mycmd.bin_execute go run github.com/travisbhartwell/bashdoc/cmd/dump_doc
+}
+project.register_task run-dump_doc
+
+function run-dump-script-structure() {
+    mycmd.bin_execute go run github.com/travisbhartwell/bashdoc/cmd/dump-script-structure "${@}"
+}
+project.register_task run-dump-script-structure
+
+mycmd.defer_at_startup mycmd.init_bin tmux
+mycmd.defer_at_startup mycmd.init_bin curl
+function go-doc() {
+    if [[ -v TMUX ]]; then
+        # shellcheck disable=SC2154
+        mycmd.bin_execute tmux -CC new-window -c "${MYPROJECT_BASE_DIR}" -d 'go run golang.org/x/tools/cmd/godoc@latest'
+
+        mycmd.log "Waiting for docs site to start."
+        curl --silent --head -X GET --retry 20 --retry-connrefused --retry-delay 1 http://localhost:6060
+
+        open http://localhost:6060
+    else
+        mycmd.bin_execute go run golang.org/x/tools/cmd/godoc@latest
+    fi
+}
+project.register_task go-doc
+
+function build() {
+    go build -v ./...
+}
+project.register_task build
