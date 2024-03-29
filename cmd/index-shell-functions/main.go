@@ -62,15 +62,6 @@ func indexLines(reader io.ReadSeeker, writer io.Writer, fileName string) error {
 		return fmt.Errorf("error loading functions from file: %w", err)
 	}
 
-	for _, f := range functions {
-		fmt.Printf(
-			"Found function %s at %d, %d\n",
-			f.Name,
-			f.Start.Line(),
-			f.Start.Col(),
-		)
-	}
-
 	_, err = reader.Seek(0, io.SeekStart)
 	if err != nil {
 		return fmt.Errorf("error rewinding reader: %w", err)
@@ -79,10 +70,6 @@ func indexLines(reader io.ReadSeeker, writer io.Writer, fileName string) error {
 	lines, err := bashdoc.LoadLinesWithCode(reader)
 	if err != nil {
 		return fmt.Errorf("error loading lines with code: %w", err)
-	}
-
-	for _, line := range lines {
-		fmt.Printf("Found line at %d, %d\n", line.Line(), line.Col())
 	}
 
 	records := [][]string{
@@ -95,8 +82,6 @@ func indexLines(reader io.ReadSeeker, writer io.Writer, fileName string) error {
 			fileName, fnName, fmt.Sprintf("%d", line.Line()),
 		})
 	}
-
-	fmt.Printf("Records: %+v", records)
 
 	csvWriter := csv.NewWriter(writer)
 
