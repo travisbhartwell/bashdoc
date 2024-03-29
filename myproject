@@ -13,12 +13,35 @@ project.register_fileset SHELL_FILES
 project.add_files_to_fileset SHELL_FILES "${MYPROJECT_PROJECT_FILE}"
 
 project.register_task_with_fileset list-shell-files project.list-files SHELL_FILES
-project.register_task_with_fileset format-shell shell.format SHELL_FILES
-project.register_task_with_fileset lint-shell shell.lint SHELL_FILES
+project.register_task_with_fileset format-shell project:shell.format SHELL_FILES
+project.register_task_with_fileset lint-shell project:shell.lint SHELL_FILES
 
 #----------------------------------------
 # Go Support
 mycmd.defer_at_startup mycmd.init_bin go
+
+function install-go-command-if-needed() {
+    local -r cmd="${1}"
+    local -r fq_cmd="${2}"
+
+    if ! command -v "${cmd}" &> /dev/null; then
+        mycmd.bin_execute go install "${fq_cmd}"
+    fi
+}
+
+function install-doom-deps() {
+    # Based on https://github.com/doomemacs/doomemacs/tree/master/modules/lang/go#dependencies
+    install-go-command-if-needed gocode github.com/stamblerre/gocode@latest
+    install-go-command-if-needed godoc golang.org/x/tools/cmd/godoc@latest
+    install-go-command-if-needed goimports golang.org/x/tools/cmd/goimports@latest
+    install-go-command-if-needed gomodifytags github.com/fatih/gomodifytags@latest
+    install-go-command-if-needed gopls golang.org/x/tools/gopls@latest
+    install-go-command-if-needed gore github.com/x-motemen/gore/cmd/gore@latest
+    install-go-command-if-needed gorename golang.org/x/tools/cmd/gorename@latest
+    install-go-command-if-needed gotests github.com/cweill/gotests/gotests@latest
+    install-go-command-if-needed guru golang.org/x/tools/cmd/guru@latest
+}
+project.register_task install-doom-deps
 
 function go-lines() {
     mycmd.bin_execute go run github.com/segmentio/golines@latest --write-output --max-len=100 --tab-len=8 --reformat-tags --shorten-comments .
@@ -81,6 +104,11 @@ function run-dump-script-structure() {
     mycmd.bin_execute go run github.com/travisbhartwell/bashdoc/cmd/dump-script-structure "${@}"
 }
 project.register_task run-dump-script-structure
+
+function run-index-shell-functions() {
+    mycmd.bin_execute go run github.com/travisbhartwell/bashdoc/cmd/index-shell-functions "${@}"
+}
+project.register_task run-index-shell-functions
 
 mycmd.defer_at_startup mycmd.init_bin tmux
 mycmd.defer_at_startup mycmd.init_bin curl

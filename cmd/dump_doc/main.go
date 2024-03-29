@@ -22,7 +22,7 @@ func associated_comments(
 ) []bashdoc.Comment {
 	var associated []bashdoc.Comment
 
-	line := function.DeclaredAt.Line() - 1
+	line := function.Start.Line() - 1
 
 	for line > 0 {
 		if comment, found := comments.Comments[line]; found {
@@ -54,8 +54,8 @@ func run() error {
 		fmt.Printf(
 			"Found function %s at %d, %d\n",
 			f.Name,
-			f.DeclaredAt.Line(),
-			f.DeclaredAt.Col(),
+			f.Start.Line(),
+			f.Start.Col(),
 		)
 	}
 
