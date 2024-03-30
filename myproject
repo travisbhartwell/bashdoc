@@ -18,6 +18,22 @@ project.register_task_with_fileset lint-shell project:shell.lint SHELL_FILES
 
 #----------------------------------------
 # Go Support
+
+# First, a list of the commands that will be created
+# shellcheck disable=SC2154
+readonly COMMANDS_BASE_DIR="${MYPROJECT_BASE_DIR}/cmd"
+declare -agx COMMAND_NAMES=()
+
+mycmd.defer_at_startup mycmd.init_bin find
+function get_command_names() {
+    readarray -t COMMAND_NAMES < \
+        <(mycmd.bin_execute find "${COMMANDS_BASE_DIR}" -mindepth 1 -type d -printf "%f\n" |
+              LC_ALL=en_US.UTF-8 sort || true)
+    readonly COMMAND_NAMES
+}
+get_command_names
+
+
 mycmd.defer_at_startup mycmd.init_bin go
 
 function install-go-command-if-needed() {
@@ -68,6 +84,39 @@ function go-mod-tidy() {
 }
 project.register_task go-mod-tidy
 
+function list-available-dependency-updates() {
+    mycmd.bin_execute go list -u -m all
+}
+project.register_task list-available-dependency-updates
+
+function update-dependencies-to-latest() {
+    mycmd.bin_execute go get -u ./...
+
+    project.execute_tasks go-mod-tidy
+}
+project.register_task update-dependencies-to-latest
+
+mycmd.defer_at_startup mycmd.init_bin sed
+mycmd.defer_at_startup mycmd.init_bin grep
+function update-go-language-version-to-latest() {
+    local latest_version
+    # Sample output: go version go1.22.1 darwin/arm64
+    if ! latest_version="$(mycmd.bin_execute go version | mycmd.bin_execute sed -r -n 's/go version go([^ ]+) .*/\1/p')"; then
+       mycmd.err_exit 1 "Error getting go version"
+    fi
+    readonly latest_version
+
+    project.output_only_if_not_quiet "Current Go version: ${latest_version}."
+
+    if ! mycmd.bin_execute grep -q "^go ${latest_version}$" go.mod; then
+        project.output_only_if_not_quiet "Updating Go version to ${latest_version}."
+        mycmd.bin_execute go mod edit -go="${latest_version}"
+    else
+        project.output_only_if_not_quiet "Already at the latest Go version, ${latest_version}."
+    fi
+}
+project.register_task update-go-language-version-to-latest
+
 mycmd.defer_at_startup mycmd.init_bin golangci-lint
 function lint-golangci-lint-auto-fix() {
     local -r linter_name="${1}"
@@ -95,8 +144,8 @@ function lint-all() {
 }
 project.register_task lint-all
 
-function run-dump_doc() {
-    mycmd.bin_execute go run github.com/travisbhartwell/bashdoc/cmd/dump_doc
+function run-dump-doc() {
+    mycmd.bin_execute go run github.com/travisbhartwell/bashdoc/cmd/dump-doc
 }
 project.register_task run-dump_doc
 
@@ -128,6 +177,50 @@ function go-doc() {
 project.register_task go-doc
 
 function build() {
-    go build -v ./...
+    mycmd.bin_execute go build -v ./...
 }
 project.register_task build
+
+function install-project-cmd() {
+    local -r cmd="${1}"
+
+    project.output_only_if_not_quiet "Installing ${cmd}."
+    mycmd.bin_execute go install "github.com/travisbhartwell/bashdoc/cmd/${cmd}"
+}
+
+function go-install() {
+    local cmd
+
+    for cmd in "${COMMAND_NAMES[@]}"; do
+        if ! install-project-cmd "${cmd}"; then
+            return 1
+        fi
+    done
+}
+project.register_task go-install
+
+mycmd.defer_at_startup mycmd.init_bin install
+function install-to-local-bin() {
+    local go_path_root
+    if ! go_path_root="$(go env GOPATH)"; then
+        project.output_only_if_not_quiet "Error getting the GOPATH value."
+        return 1
+    fi
+    readonly go_path_root
+
+    local -r bin_dir="${go_path_root}/bin"
+    if [[ ! -d "${bin_dir}" ]]; then
+        project.output_only_if_not_quiet "Error getting GOPATH bin directory."
+        return 1
+    fi
+
+    local -r local_bin="${HOME}/.local/bin"
+
+    project.execute_tasks go-install
+
+    for cmd in "${COMMAND_NAMES[@]}"; do
+        project.output_only_if_not_quiet "Installing ${cmd} to ${local_bin}."
+        mycmd.bin_execute install -C -v "${bin_dir}/${cmd}" "${local_bin}"
+    done
+}
+project.register_task install-to-local-bin

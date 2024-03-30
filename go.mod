@@ -1,5 +1,5 @@
 module github.com/travisbhartwell/bashdoc
 
-go 1.21.3
+go 1.22.1
 
-require mvdan.cc/sh/v3 v3.7.0
+require mvdan.cc/sh/v3 v3.8.0
