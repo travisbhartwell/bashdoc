@@ -66,7 +66,7 @@ func run() error {
 
 	comments, err := bashdoc.LoadCommentsFromSource(reader)
 	if err != nil {
-		return fmt.Errorf("error loading comments from file: %s", err)
+		return fmt.Errorf("error loading comments from file: %w", err)
 	}
 
 	fmt.Println("Comments found:")
