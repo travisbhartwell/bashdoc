@@ -1,0 +1,36 @@
+#!/usr/bin/env -S mycmd myproject run
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+# --------------------------------------------------------------------------------------------------
+# Tasks to run commands defined in the project
+myproject.register_task_definition_file_description "Tasks for running commands defined in the BashDoc project"
+
+mycmd.trace "Using the following variables defined in the main task definition file:"
+# shellcheck disable=SC2154
+mycmd.trace "- PROJECT_URL_BASE:  ${PROJECT_URL_BASE}"
+
+function run_dump_doc() {
+    mycmd.bin_execute go run "${PROJECT_URL_BASE}"/dump-doc
+}
+
+myproject.register_task dump-doc run_dump_doc
+myproject.register_task_description dump-doc "Run the dump-doc command."
+
+function run_dump_script_structure() {
+    mycmd.bin_execute go run "${PROJECT_URL_BASE}"/dump-script-structure "${@}"
+}
+
+myproject.register_task dump-script-structure run_dump_script_structure
+myproject.register_task_description dump-script-structure "run the dump-script-structure command."
+
+function run_index_shell_functions() {
+    mycmd.bin_execute go run "${PROJECT_URL_BASE}"/index-shell-functions "${@}"
+}
+
+myproject.register_task index-shell-functions run_index_shell_functions
+myproject.register_task_description index-shell-functions "Run the index-shell-functions command."
+
+mycmd.trace "Finished loading the run cmd task definition file."

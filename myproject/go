@@ -1,0 +1,205 @@
+#!/usr/bin/env -S mycmd myproject run
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+# --------------------------------------------------------------------------------------------------
+# Go Language Tasks
+myproject.register_task_definition_file_description "Tasks for handling the Go language in the BashDoc project"
+
+mycmd.trace "The following variables set in the main task definition file are used here:"
+# shellcheck disable=SC2154
+mycmd.trace "- COMMAND_NAMES: ${COMMAND_NAMES[*]}"
+# shellcheck disable=SC2154
+mycmd.trace "- PROJECT_URL_BASE:  ${PROJECT_URL_BASE}"
+
+function go_lines() {
+    local -n format_fileset="${1}"
+
+    mycmd.bin_execute go run github.com/segmentio/golines@latest --write-output --max-len=100 --tab-len=8 --reformat-tags --shorten-comments --verbose "${format_fileset[@]}"
+}
+
+myproject.register_task_with_fileset go-lines go_lines GO_FILES
+myproject.register_task_description go-lines "Format the Go source files with golines."
+
+function go_imports() {
+    local -n format_fileset="${1}"
+
+    mycmd.bin_execute go run golang.org/x/tools/cmd/goimports@latest -w "${format_fileset[@]}"
+}
+
+myproject.register_task_with_fileset go-imports go_imports GO_FILES
+myproject.register_task_description go-imports "Update the imports lines in the Go source files with goimports."
+
+function go_fmt() {
+    mycmd.bin_execute go fmt -x ./...
+}
+
+myproject.register_task go-fmt go_fmt
+myproject.register_task_description go-fmt "Format the Go source files with go fmt."
+
+function format() {
+    myproject.execute_tasks go-imports \; go-lines
+}
+
+myproject.register_task format
+myproject.register_task_description format "Format the Go source files."
+
+function go_mod_tidy() {
+    mycmd.bin_execute go mod tidy
+}
+
+myproject.register_task go-mod-tidy go_mod_tidy
+myproject.register_task_description go-mod-tidy "Update the project go.mod file with go mod tidy."
+
+function list_available_dependency_updates() {
+    mycmd.bin_execute go list -u -m all
+}
+
+myproject.register_task list-available-dependency-updates list_available_dependency_updates
+myproject.register_task_description list-available-dependency-updates "List available Go dependency updates for the project."
+
+function update_dependencies_to_latest() {
+    mycmd.bin_execute go get -u ./...
+
+    myproject.execute_tasks go-mod-tidy
+}
+
+myproject.register_task update-dependencies-to-latest update_dependencies_to_latest
+myproject.register_task_description update-dependencies-to-latest "Update the Go dependencies to the latest for the project."
+
+mycmd.defer_at_startup mycmd.init_bin sed
+mycmd.defer_at_startup mycmd.init_bin grep
+function update_go_language_version_to_latest() {
+    local latest_version
+    # Sample output: go version go1.22.1 darwin/arm64
+    if ! latest_version="$(mycmd.bin_execute go version | mycmd.bin_execute sed -r -n 's/go version go([^ ]+) .*/\1/p')"; then
+        mycmd.err_exit 1 "Error getting go version"
+    fi
+    readonly latest_version
+
+    myproject.output_only_if_not_quiet "Current Go version: ${latest_version}."
+
+    if ! mycmd.bin_execute grep -q "^go ${latest_version}$" go.mod; then
+        myproject.output_only_if_not_quiet "Updating Go version to ${latest_version}."
+        mycmd.bin_execute go mod edit -go="${latest_version}"
+    else
+        myproject.output_only_if_not_quiet "Already at the latest Go version, ${latest_version}."
+    fi
+}
+
+myproject.register_task update-go-language-version-to-latest update_go_language_version_to_latest
+myproject.register_task_description update-go-language-version-to-latest "Update the Go language version for the project to the latest."
+
+mycmd.defer_at_startup mycmd.init_bin golangci-lint
+function lint_golangci_lint_auto_fix() {
+    local -r linter_name="${1}"
+
+    golangci-lint run \
+        --verbose \
+        --disable-all --enable "${linter_name}" \
+        --fix
+}
+
+myproject.register_task lint-golangci-lint-auto-fix lint_golangci_lint_auto_fix
+myproject.register_task_description lint-golangci-lint-auto-fix "Lint Go source files with golangci-lint and auto fix errors for the specified linter."
+
+mycmd.defer_at_startup mycmd.init_bin golangci-lint
+function lint_golangci_lint() {
+    golangci-lint run --sort-results
+}
+
+myproject.register_task lint-golangci-lint lint_golangci_lint
+myproject.register_task_description lint-golangci-lint "Lint Go source files with golangci-lint."
+
+function go_vet() {
+    mycmd.bin_execute go vet
+}
+
+myproject.register_task go-vet go_vet
+myproject.register_task_description go-vet "Lint the Go source files with go vet."
+
+function lint_all_go() {
+    myproject.execute_tasks go-vet \; lint-golangci-lint
+}
+
+myproject.register_task lint-go lint_all_go
+myproject.register_task_description lint-go "Runn all linters on project Go source files."
+
+mycmd.defer_at_startup mycmd.init_bin tmux
+mycmd.defer_at_startup mycmd.init_bin curl
+
+function go_doc() {
+    if [[ -v TMUX ]]; then
+        # shellcheck disable=SC2154
+        mycmd.bin_execute tmux new-window -c "${MYPROJECT_BASE_DIR}" -d 'go run golang.org/x/tools/cmd/godoc@latest'
+
+        mycmd.error_output "Waiting for docs site to start."
+        curl --silent --head -X GET --retry 20 --retry-connrefused --retry-delay 1 http://localhost:6060
+
+        open http://localhost:6060
+    else
+        mycmd.bin_execute go run golang.org/x/tools/cmd/godoc@latest
+    fi
+}
+
+myproject.register_task go-doc go_doc
+myproject.register_task_description go-doc "Generate the Go docs for the project and open in browser if tmux session is active."
+
+function build() {
+    mycmd.bin_execute go build -v ./...
+}
+
+myproject.register_task build
+myproject.register_task_description build "Build the Go source files."
+
+function install_project_cmd() {
+    local -r cmd="${1}"
+
+    myproject.output_only_if_not_quiet "Installing ${cmd}."
+    mycmd.bin_execute go install "${PROJECT_URL_BASE}/${cmd}"
+}
+
+function go_install() {
+    local cmd
+
+    for cmd in "${COMMAND_NAMES[@]}"; do
+        if ! install_project_cmd "${cmd}"; then
+            return 1
+        fi
+    done
+}
+
+myproject.register_task go-install go_install
+myproject.register_task_description go-install "Compile and install the commands defined in the project."
+
+mycmd.defer_at_startup mycmd.init_bin install
+function install_to_local_bin() {
+    local go_path_root
+    if ! go_path_root="$(go env GOPATH)"; then
+        mycmd.error_output "Error getting the GOPATH value."
+        return 1
+    fi
+    readonly go_path_root
+
+    local -r bin_dir="${go_path_root}/bin"
+    if [[ ! -d "${bin_dir}" ]]; then
+        mycmd.error_output "Error getting GOPATH bin directory."
+        return 1
+    fi
+
+    local -r local_bin="${HOME}/.local/bin"
+
+    myproject.execute_tasks go-install
+
+    for cmd in "${COMMAND_NAMES[@]}"; do
+        myproject.output_only_if_not_quiet "Installing ${cmd} to ${local_bin}."
+        mycmd.bin_execute install -C -v "${bin_dir}/${cmd}" "${local_bin}"
+    done
+}
+
+myproject.register_task install-to-local-bin install_to_local_bin
+myproject.register_task_description install-to-local-bin "Install project commands to ${HOME}/.local/bin"
+
+mycmd.trace "Finished loading the go task definition file."

@@ -1,0 +1,87 @@
+#!/usr/bin/env -S mycmd myproject run
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+myproject.register_task_definition_file_description "BashDoc is an API Doc Generator for Bash Libraries."
+
+# --------------------------------------------------------------------------------------------------
+# Project-Wide Variables
+
+mycmd.trace "The following variables set by MyProject are used in the main task definition file:"
+# shellcheck disable=SC2154
+mycmd.trace "- MYPROJECT_ROOT_DIRECTORY:            ${MYPROJECT_ROOT_DIRECTORY}"
+# shellcheck disable=SC2154
+mycmd.trace "- MYPROJECT_TASK_DEFINITION_DIRECTORY: ${MYPROJECT_TASK_DEFINITION_DIRECTORY}"
+
+readonly COMMANDS_BASE_DIR="${MYPROJECT_ROOT_DIRECTORY}/cmd"
+readonly PROJECT_URL_BASE="github.com/travisbhartwell/bashdoc/cmd"
+
+mycmd.trace "Set the following variables:"
+mycmd.trace "- COMMANDS_BASE_DIR: ${COMMANDS_BASE_DIR}"
+mycmd.trace "- PROJECT_URL_BASE:  ${PROJECT_URL_BASE}"
+
+# --------------------------------------------------------------------------------------------------
+# Project File Sets
+
+# All Files
+myproject.register_fileset ALL_FILES
+myproject.find_and_add_files_to_fileset ALL_FILES "${MYPROJECT_TASK_DEFINITION_DIRECTORY}" "${COMMANDS_BASE_DIR}" -type f
+myproject.add_files_to_fileset ALL_FILES \
+    "${MYPROJECT_ROOT_DIRECTORY}"/*.go \
+    "${MYPROJECT_ROOT_DIRECTORY}"/go.mod \
+    "${MYPROJECT_ROOT_DIRECTORY}"/README.md \
+    "${MYPROJECT_ROOT_DIRECTORY}"/LICENSE
+
+# Task Definition Files
+myproject.register_fileset TASK_DEFINITION_FILES
+myproject.add_files_to_fileset TASK_DEFINITION_FILES "${MYPROJECT_TASK_DEFINITION_DIRECTORY}"/*
+
+# Implementation Files Only
+myproject.register_fileset GO_FILES
+myproject.find_and_add_files_to_fileset GO_FILES \
+    "${MYPROJECT_ROOT_DIRECTORY}" \
+    -not \( -path "${MYPROJECT_ROOT_DIRECTORY}/build" -prune \) -not \( -path "${MYPROJECT_ROOT_DIRECTORY}/.git" -prune \) -not \( -path "${MYPROJECT_ROOT_DIRECTORY}/.direnv" -prune \) \
+    -name '*.go'
+
+declare -agx COMMAND_NAMES=()
+
+# --------------------------------------------------------------------------------------------------
+# Global Configuration
+
+mycmd.init_bin find
+function get_command_names() {
+    readarray -t COMMAND_NAMES < \
+        <(mycmd.bin_execute find "${COMMANDS_BASE_DIR}" -mindepth 1 -type d -printf "%f\n" | LC_ALL=en_US.UTF-8 sort || true)
+    readonly COMMAND_NAMES
+}
+get_command_names
+
+mycmd.defer_at_startup mycmd.init_bin go
+
+# --------------------------------------------------------------------------------------------------
+# Main Tasks
+
+function format_all() {
+    myproject.execute_tasks task-definition-files format \; go format
+}
+
+myproject.register_task format-all format_all
+myproject.register_task_description format-all "Format all source files in the project."
+
+function lint_all() {
+    myproject.execute_tasks task-definition-files lint \; go lint-go
+}
+
+myproject.register_task lint-all lint_all
+myproject.register_task_description lint-all "Lint all source files in the project."
+
+function all() {
+    myproject.execute_tasks format-all \; lint-all \; go build
+}
+
+myproject.register_task all
+myproject.register_task_description all "Execute all build tasks: format, lint, and build."
+
+mycmd.trace "Finished loading the main task definition file."

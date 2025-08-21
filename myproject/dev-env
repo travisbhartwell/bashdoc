@@ -1,0 +1,58 @@
+#!/usr/bin/env -S mycmd myproject run
+# -*- mode: shell-script; sh-shell: bash; sh-basic-offset: 4; sh-indentation: 4; coding: utf-8 -*-
+# shellcheck shell=bash
+
+set -o nounset -o errexit -o errtrace -o pipefail
+
+# --------------------------------------------------------------------------------------------------
+# Go Language Tasks
+myproject.register_task_definition_file_description "Tasks for setting up the development environment for the BashDoc project"
+
+function install_go_command() {
+    local -r fq_cmd="${1}"
+
+    mycmd.bin_execute go install "${fq_cmd}"
+}
+
+function install_go_command_if_needed() {
+    local -r cmd="${1}"
+    local -r fq_cmd="${2}"
+
+    if ! command -v "${cmd}" &>/dev/null; then
+        install_go_command "${fq_cmd}"
+    fi
+}
+
+function install_or_update_doom_deps() {
+    # Based on https://github.com/doomemacs/doomemacs/tree/master/modules/lang/go#dependencies
+    install_go_command github.com/stamblerre/gocode@latest
+    install_go_command golang.org/x/tools/cmd/godoc@latest
+    install_go_command golang.org/x/tools/cmd/goimports@latest
+    install_go_command github.com/fatih/gomodifytags@latest
+    install_go_command golang.org/x/tools/gopls@latest
+    install_go_command github.com/x_motemen/gore/cmd/gore@latest
+    install_go_command golang.org/x/tools/cmd/gorename@latest
+    install_go_command github.com/cweill/gotests/gotests@latest
+    install_go_command golang.org/x/tools/cmd/guru@latest
+}
+
+myproject.register_task install-or-update-doom-deps install_or_update_doom_deps
+myproject.register_task_description install-or-update-doom-deps "Install or update the Doom Emacs development environment dependencies."
+
+function install_doom_deps() {
+    # Based on https://github.com/doomemacs/doomemacs/tree/master/modules/lang/go#dependencies
+    install_go_command_if_needed gore github.com/x-motemen/gore/cmd/gore@latest
+    install_go_command_if_needed gocode github.com/stamblerre/gocode@latest
+    install_go_command_if_needed godoc golang.org/x/tools/cmd/godoc@latest
+    install_go_command_if_needed goimports golang.org/x/tools/cmd/goimports@latest
+    install_go_command_if_needed gorename golang.org/x/tools/cmd/gorename@latest
+    install_go_command_if_needed gotests github.com/cweill/gotests/gotests@latest
+    install_go_command_if_needed gomodifytags github.com/fatih/gomodifytags@latest
+    install_go_command_if_needed gopls golang.org/x/tools/gopls@latest
+    install_go_command_if_needed guru golang.org/x/tools/cmd/guru@latest
+}
+
+myproject.register_task install-doom-deps install_doom_deps
+myproject.register_task_description install-doom-deps "Install Go development tools needed for Doom Emacs."
+
+mycmd.trace "Finished loading the dev env task definition file."
