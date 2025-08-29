@@ -17,7 +17,7 @@ mycmd.trace "- PROJECT_URL_BASE:  ${PROJECT_URL_BASE}"
 function go_lines() {
     local -n format_fileset="${1}"
 
-    mycmd.bin_execute go run github.com/segmentio/golines@latest --write-output --max-len=100 --tab-len=8 --reformat-tags --shorten-comments --verbose "${format_fileset[@]}"
+    mycmd.bin_execute go run github.com/segmentio/golines@latest --write-output --max-len=100 --tab-len=8 --reformat-tags --shorten-comments "${format_fileset[@]}"
 }
 
 myproject.register_task_with_fileset go-lines go_lines GO_FILES
@@ -107,7 +107,7 @@ myproject.register_task_description lint-golangci-lint-auto-fix "Lint Go source 
 
 mycmd.defer_at_startup mycmd.init_bin golangci-lint
 function lint_golangci_lint() {
-    golangci-lint run --sort-results
+    golangci-lint run
 }
 
 myproject.register_task lint-golangci-lint lint_golangci_lint

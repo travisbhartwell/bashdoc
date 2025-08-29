@@ -106,7 +106,7 @@ func (c *CommentsByLine) LinesWithComments() []uint {
 }
 
 func LoadCommentsFromSource(reader io.Reader) (*CommentsByLine, error) {
-	var commentsByLine map[uint]Comment = make(map[uint]Comment)
+	var commentsByLine = make(map[uint]Comment)
 
 	parser, err := syntax.NewParser(syntax.KeepComments(true)).Parse(reader, "")
 	if err != nil {
