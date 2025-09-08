@@ -69,8 +69,8 @@ function update_dependencies_to_latest() {
 myproject.register_task update-dependencies-to-latest update_dependencies_to_latest
 myproject.register_task_description update-dependencies-to-latest "Update the Go dependencies to the latest for the project."
 
-mycmd.defer_at_startup mycmd.init_bin sed
-mycmd.defer_at_startup mycmd.init_bin grep
+mycmd.add_to_init_bin_batch sed
+mycmd.add_to_init_bin_batch grep
 function update_go_language_version_to_latest() {
     local latest_version
     # Sample output: go version go1.22.1 darwin/arm64
@@ -92,7 +92,7 @@ function update_go_language_version_to_latest() {
 myproject.register_task update-go-language-version-to-latest update_go_language_version_to_latest
 myproject.register_task_description update-go-language-version-to-latest "Update the Go language version for the project to the latest."
 
-mycmd.defer_at_startup mycmd.init_bin golangci-lint
+mycmd.add_to_init_bin_batch golangci-lint
 function lint_golangci_lint_auto_fix() {
     local -r linter_name="${1}"
 
@@ -105,7 +105,7 @@ function lint_golangci_lint_auto_fix() {
 myproject.register_task lint-golangci-lint-auto-fix lint_golangci_lint_auto_fix
 myproject.register_task_description lint-golangci-lint-auto-fix "Lint Go source files with golangci-lint and auto fix errors for the specified linter."
 
-mycmd.defer_at_startup mycmd.init_bin golangci-lint
+mycmd.add_to_init_bin_batch golangci-lint
 function lint_golangci_lint() {
     golangci-lint run
 }
@@ -127,8 +127,8 @@ function lint_all_go() {
 myproject.register_task lint-go lint_all_go
 myproject.register_task_description lint-go "Runn all linters on project Go source files."
 
-mycmd.defer_at_startup mycmd.init_bin tmux
-mycmd.defer_at_startup mycmd.init_bin curl
+mycmd.add_to_init_bin_batch tmux
+mycmd.add_to_init_bin_batch curl
 
 function go_doc() {
     if [[ -v TMUX ]]; then
@@ -174,7 +174,7 @@ function go_install() {
 myproject.register_task go-install go_install
 myproject.register_task_description go-install "Compile and install the commands defined in the project."
 
-mycmd.defer_at_startup mycmd.init_bin install
+mycmd.add_to_init_bin_batch install
 function install_to_local_bin() {
     local go_path_root
     if ! go_path_root="$(go env GOPATH)"; then

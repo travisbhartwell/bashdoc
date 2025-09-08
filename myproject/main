@@ -58,7 +58,7 @@ function get_command_names() {
 }
 get_command_names
 
-mycmd.defer_at_startup mycmd.init_bin go
+mycmd.add_to_init_bin_batch go
 
 # --------------------------------------------------------------------------------------------------
 # Main Tasks
